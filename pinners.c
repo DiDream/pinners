@@ -1,3 +1,10 @@
+/*
+Autores:
+* Juan José Barroso Gimenez
+* Elena Miniaeva
+* Alex Jimmy Montaño Fuentes
+*/
+
 #include <asm/io.h>
 #include <mach/platform.h>
 #include <linux/init.h>
