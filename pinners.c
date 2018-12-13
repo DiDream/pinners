@@ -46,6 +46,24 @@ struct GPIO_Regs *gpio_regs;
 
 static struct timer_list s_BlinkTimer;
 static int s_BlinkPeriod = 1000;
+static struct class *myDeviceClass;
+static struct device *myDeviceObject;
+
+static void SetGPIOOutputValue(int GPIO, bool outputValue);
+static ssize_t my_callback(struct device* dev, struct device_attribute* attr,const char* buf, size_t count);
+
+static void SetGPIOFunction(int GPIO, int functionCode);
+static void toogleTurnLed(int pinInput, int pinLed);
+
+static void pinToogleHandler(unsigned long unused);
+static void BlinkTimerHandler(unsigned long unused);
+static void setPullUpRegister();
+static void waitCycles(int cycles);
+static void setOneBitGPPUDCLK(bit);
+
+
+
+static DEVICE_ATTR(period, S_IWUSR | S_IWGRP | S_IWOTH, NULL,my_callback);
 
 
 static void SetGPIOOutputValue(int GPIO, bool outputValue)
@@ -67,11 +85,7 @@ static ssize_t my_callback(struct device* dev, struct device_attribute* attr,con
 	return count;
 }
 
-static DEVICE_ATTR(period, S_IWUSR | S_IWGRP | S_IWOTH, NULL,my_callback);
-// nombre del atributo a modificar, permisos, funcion asociada al callback
 
-static struct class *myDeviceClass;
-static struct device *myDeviceObject;
 
 static void SetGPIOFunction(int GPIO, int functionCode)
 {
@@ -99,24 +113,49 @@ static void BlinkTimerHandler(unsigned long unused) {
 	
 }
 */
-static void BlinkTimerHandler(unsigned long unused) {
-	uint32_t result = gpio_regs -> GPLEV[0] & (1 << (23 % 32));
+
+static void toogleTurnLed(int pinInput, int pinLed){
+	uint32_t result = gpio_regs -> GPLEV[0] & (1 << (pinInput % 32));
 
 	if (result == 0) {
-		SetGPIOOutputValue(22, true);
+		SetGPIOOutputValue(pinLed, true);
 	}
 	else {
-		SetGPIOOutputValue(22, false);
+		SetGPIOOutputValue(pinLed, false);
 	}
-	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
-	
 }
+static void pinToogleHandler(unsigned long unused) {
+	toogleTurnLed(18, 27);
+	toogleTurnLed(23, 22);
+
+	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
+}
+
+
+static void setPullUpRegister(){
+	gpio_regs -> GPPUD = gpio_regs -> GPPUD | 0x02;
+}
+
+static void waitCycles(int cycles){
+
+	while(cycles < 0){
+		cycles--;	
+	}
+}
+
+static void setOneBitGPPUDCLK(bit){
+	int index = bit / 32;
+	bit = bit % 32;
+	gpio_regs -> GPPUDCLK[index] = gpio_regs -> GPPUDCLK[index] | (1 << bit);
+}
+
+
 
 static int init_Module(void) {
 	printk(KERN_ALERT "Accediendo al GPIO\n");
 	gpio_regs = (struct GPIO_Regs *) __io_address(GPIO_BASE);
 
-	//Configurar el pin como salida, recordar en que estado estaba
+
 	SetGPIOFunction(22, 1);
 	SetGPIOFunction(27, 1);
 	SetGPIOFunction(23, 0);
@@ -134,16 +173,18 @@ static int init_Module(void) {
 	result = device_create_file(myDeviceObject, &dev_attr_period);
 	*/
 
-	int contador = 0;
 
-	gpio_regs -> GPPUD = gpio_regs -> GPPUD | 0x02;	
-	while(contador < 150){ contador++; }
-	gpio_regs -> GPPUDCLK[0] = gpio_regs -> GPPUDCLK[0] | (1 << (23 % 32));
-	while(contador < 300){ contador++; }
+	setPullUpRegister();
+	waitCycles(150);
 
-	setup_timer(&s_BlinkTimer, BlinkTimerHandler, 0);
-	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
+	setOneBitGPPUDCLK(23);
+	waitCycles(150);
 	
+	setOneBitGPPUDCLK(18);
+	waitCycles(150);
+
+	setup_timer(&s_BlinkTimer, pinToogleHandler, 0);
+	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
 		
 	
 	return 0;
