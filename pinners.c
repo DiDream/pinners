@@ -9,6 +9,8 @@
 
 #include <linux/device.h>
 
+#include <linux/delay.h>
+
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct GPIO_Regs
@@ -18,12 +20,33 @@ struct GPIO_Regs
 	uint32_t GPSET[2];
 	uint32_t Reserved2;
 	uint32_t GPCLR[2];
+	uint32_t Reserver3;
+	uint32_t GPLEV[2];
+	uint32_t Reserver4;
+	uint32_t GPEDS[2];
+	uint32_t Reserver5;
+	uint32_t GPREN[2];
+	uint32_t Reserver6;
+	uint32_t GPFEN[2];
+	uint32_t Reserver7;
+	uint32_t GPHEN[2];
+	uint32_t Reserver8;
+	uint32_t GPLEN[2];
+	uint32_t Reserver9;
+	uint32_t GPAREN[2];
+	uint32_t Reserver10;
+	uint32_t GPAFEN[2];
+	uint32_t Reserver11;
+	uint32_t GPPUD;
+	uint32_t GPPUDCLK[2];
+
 };
 
 struct GPIO_Regs *gpio_regs;
 
 static struct timer_list s_BlinkTimer;
 static int s_BlinkPeriod = 1000;
+
 
 static void SetGPIOOutputValue(int GPIO, bool outputValue)
 {
@@ -85,7 +108,7 @@ static int init_Module(void) {
 	SetGPIOFunction(23, 0);
 	SetGPIOFunction(18, 0);
 
-
+	/*
 	setup_timer(&s_BlinkTimer, BlinkTimerHandler, 0);
 	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
 	
@@ -95,7 +118,17 @@ static int init_Module(void) {
 	myDeviceClass = class_create(THIS_MODULE, "LedBlink");
 	myDeviceObject = device_create(myDeviceClass, NULL, 0, NULL, "LedBlink");
 	result = device_create_file(myDeviceObject, &dev_attr_period);
+	*/
 
+	int contador = 0;
+
+	gpio_regs -> GPPUD = gpio_regs -> GPPUD | 0x02;	
+	while(contador < 150){ contador++; }
+	gpio_regs -> GPPUDCLK[0] = gpio_regs -> GPPUDCLK[0] | (1 << (23 % 32));
+	while(contador < 300){ contador++; }
+	
+		
+	
 	return 0;
 	
 }
