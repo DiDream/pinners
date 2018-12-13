@@ -88,12 +88,26 @@ static void SetGPIOFunction(int GPIO, int functionCode)
 
 // Funcion para hacer que el led cambie estado on->off, off->on, Se llamara
 // de forma automatica tras las interrupciones del temporizador indicadas
+/*
 static void BlinkTimerHandler(unsigned long unused) {
 	static bool on = false;
 	on = !on;
 
 	//SetGPIOOutputValue(27, on);
 	//SetGPIOOutputValue(22, !on);
+	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
+	
+}
+*/
+static void BlinkTimerHandler(unsigned long unused) {
+	uint32_t result = gpio_regs -> GPLEV[0] & (1 << (23 % 32));
+
+	if (result == 0) {
+		SetGPIOOutputValue(22, true);
+	}
+	else {
+		SetGPIOOutputValue(22, false);
+	}
 	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
 	
 }
@@ -126,6 +140,9 @@ static int init_Module(void) {
 	while(contador < 150){ contador++; }
 	gpio_regs -> GPPUDCLK[0] = gpio_regs -> GPPUDCLK[0] | (1 << (23 % 32));
 	while(contador < 300){ contador++; }
+
+	setup_timer(&s_BlinkTimer, BlinkTimerHandler, 0);
+	mod_timer(&s_BlinkTimer, jiffies + msecs_to_jiffies(s_BlinkPeriod));
 	
 		
 	
